@@ -143,5 +143,74 @@ async function loadNotes() {
   }
 }
 
+/**
+ * Task 2: Create a note via POST.
+ * Validates title: required, max 100 characters. Body is optional.
+ *
+ * @param {SubmitEvent} event
+ */
+async function createNote(event) {
+  event.preventDefault();
+
+  const title = titleInput.value.trim();
+  const body = bodyInput.value.trim();
+
+  // Validation
+  if (!title) {
+    setStatus("Title is required.", "error");
+    titleInput.focus();
+    return;
+  }
+
+  if (title.length > 100) {
+    setStatus("Title cannot exceed 100 characters.", "error");
+    titleInput.focus();
+    return;
+  }
+
+  submitBtn.disabled = true;
+  setStatus("Creating note...", "loading");
+
+  try {
+    const payload = {
+      title,
+      body,
+      userId: 1,
+    };
+
+    const res = await request(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=UTF-8",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const newNote = res.data;
+
+    // Remove empty state message if present
+    const emptyState = notesList.querySelector(".empty-state");
+    if (emptyState) {
+      emptyState.remove();
+    }
+
+    // Add note to top of list
+    notesList.prepend(createNoteElement(newNote));
+
+    // Show status code and new id
+    setStatus(`Note created (status ${res.status}, id ${newNote.id}).`, "success");
+
+    // Clear form
+    noteForm.reset();
+  } catch (error) {
+    console.error("Create note error:", error);
+    setStatus(`Failed to create note: ${error.message}`, "error");
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
 // Event Listeners
 loadBtn.addEventListener("click", loadNotes);
+noteForm.addEventListener("submit", createNote);
