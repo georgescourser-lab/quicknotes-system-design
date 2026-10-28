@@ -36,7 +36,12 @@ async function request(url, options = {}) {
     return { status: response.status, data: null };
   }
 
-  const data = await response.json();
+  let data = null;
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    data = await response.json();
+  }
+
   return { status: response.status, data };
 }
 
@@ -59,6 +64,7 @@ function setStatus(message, type = "") {
 
 /**
  * Creates a note DOM element using textContent only for user-provided data.
+ * Attaches a Delete button sending DELETE /posts/{id}.
  *
  * @param {{id: number|string, title: string, body?: string}} note
  * @returns {HTMLLIElement}
@@ -82,7 +88,17 @@ function createNoteElement(note) {
   idBadge.className = "note-id";
   idBadge.textContent = `#${note.id}`;
 
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "delete-btn";
+  deleteBtn.textContent = "Delete";
+  deleteBtn.setAttribute("aria-label", `Delete note ${note.title}`);
+
+  // Attach delete click handler
+  deleteBtn.addEventListener("click", () => deleteNote(note.id, li, deleteBtn));
+
   actions.appendChild(idBadge);
+  actions.appendChild(deleteBtn);
   header.appendChild(title);
   header.appendChild(actions);
   li.appendChild(header);
@@ -208,6 +224,56 @@ async function createNote(event) {
     setStatus(`Failed to create note: ${error.message}`, "error");
   } finally {
     submitBtn.disabled = false;
+  }
+}
+
+/**
+ * Task 3: Delete note via DELETE request.
+ *
+ * NOTE ON JSONPLACEHOLDER MOCK BEHAVIOR:
+ * JSONPlaceholder is a fake REST API for prototyping. It does not actually persist posts created
+ * via POST in a database or permanently delete items on DELETE requests.
+ * When a DELETE request is sent:
+ * 1. For predefined posts (IDs 1-100), JSONPlaceholder returns HTTP 200 with an empty body {}.
+ * 2. For newly created posts (e.g. ID 101), JSONPlaceholder never saved them to backend storage.
+ *    If an attempt to delete an ephemeral ID encounters a 404, we handle it sensibly by still
+ *    removing the note from the UI because the item was client-side only anyway.
+ *
+ * @param {number|string} id - Note ID
+ * @param {HTMLLIElement} noteElement - DOM element to remove
+ * @param {HTMLButtonElement} deleteButton - Clicked button
+ */
+async function deleteNote(id, noteElement, deleteButton) {
+  deleteButton.disabled = true;
+  setStatus(`Deleting note #${id}...`, "loading");
+
+  try {
+    const res = await request(`${API_URL}/${id}`, {
+      method: "DELETE",
+    });
+
+    noteElement.remove();
+
+    if (notesList.children.length === 0) {
+      renderEmptyState();
+    }
+
+    setStatus(`Note #${id} deleted (status ${res.status}).`, "success");
+  } catch (error) {
+    console.error(`Delete note #${id} error:`, error);
+
+    // Sensible handling for JSONPlaceholder ephemeral post IDs
+    if (Number(id) > 100 && error.message.includes("404")) {
+      noteElement.remove();
+      if (notesList.children.length === 0) {
+        renderEmptyState();
+      }
+      setStatus(`Mock note #${id} removed from list (not stored on mock server).`, "success");
+      return;
+    }
+
+    setStatus(`Failed to delete note #${id}: ${error.message}`, "error");
+    deleteButton.disabled = false;
   }
 }
 
