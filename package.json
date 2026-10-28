@@ -1,0 +1,12 @@
+{
+  "name": "quicknotes-system-design",
+  "version": "1.0.0",
+  "description": "QuickNotes System Design & API Client - Capstone Project 2",
+  "main": "api.js",
+  "scripts": {
+    "dev": "node -e \"const http=require('http'),fs=require('fs'),path=require('path');http.createServer((req,res)=>{let f=path.join(__dirname,req.url.split('?')[0]==='/'?'index.html':req.url.split('?')[0]);fs.readFile(f,(err,data)=>{if(err){res.writeHead(404);res.end('Not found');}else{let ext=path.extname(f);let ct=ext==='.html'?'text/html':ext==='.css'?'text/css':ext==='.js'?'application/javascript':ext==='.json'?'application/json':'text/plain';res.writeHead(200,{'Content-Type':ct});res.end(data);}});}).listen(3000,()=>console.log('QuickNotes running at http://localhost:3000'));\"",
+    "start": "npm run dev"
+  },
+  "author": "georgescourser-lab",
+  "license": "MIT"
+}
